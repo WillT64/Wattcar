@@ -1,0 +1,144 @@
+﻿<!DOCTYPE html>
+<html lang="fr" x-data="calculator()" x-init="init()" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wattcar - Rentabilité Auto</title>
+    <!-- Tailwind CSS & Dark Mode -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 flex flex-col min-h-screen" x-effect="calculate()">
+<!-- Header -->
+<header class="bg-gray-800 shadow-md">
+    <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="text-2xl font-bold">Wattcar</div>
+        <nav class="space-x-4 text-sm">
+            <a href="#" class="text-gray-300 hover:text-white">Accueil</a>
+            <a href="#" class="text-gray-300 hover:text-white">À propos</a>
+            <a href="#" class="text-gray-300 hover:text-white">Contact</a>
+        </nav>
+    </div>
+</header>
+
+<!-- Main Content -->
+<main class="flex-grow container mx-auto px-4 py-8 w-full max-w-2xl">
+    <h1 class="text-4xl font-extrabold text-center mb-6">Comparez Électrique vs Essence</h1>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Colonne gauche : Sélections et prix -->
+        <div class="space-y-6">
+            <!-- Sélecteur VE -->
+            <div>
+                <label class="block text-sm font-semibold mb-1">🚙 Véhicule Électrique</label>
+                <select x-model="electric" @change="updateModel()" class="w-full bg-gray-700 text-gray-200 rounded-lg p-2">
+                    <template x-for="(car, key) in electricList" :key="key">
+                        <option :value="key" x-text="car.name"></option>
+                    </template>
+                </select>
+            </div>
+            <!-- Prix électricité slider -->
+            <div>
+                <label class="block text-sm font-medium mb-1">Prix élec (€/kWh) : <span class="font-semibold" x-text="priceE.toFixed(3)"></span></label>
+                <input type="range" min="0.05" max="0.5" step="0.001" x-model.number="priceE" @input="calculate()" class="w-full accent-green-500" />
+            </div>
+            <!-- Sélecteur ICE -->
+            <div>
+                <label class="block text-sm font-semibold mb-1">⛽️ Véhicule Essence</label>
+                <select x-model="gasoline" @change="updateModel()" class="w-full bg-gray-700 text-gray-200 rounded-lg p-2">
+                    <template x-for="(car, key) in gasolineList" :key="key">
+                        <option :value="key" x-text="car.name"></option>
+                    </template>
+                </select>
+            </div>
+            <!-- Prix essence slider -->
+            <div>
+                <label class="block text-sm font-medium mb-1">Prix essence (€/L) : <span class="font-semibold" x-text="priceG.toFixed(2)"></span></label>
+                <input type="range" min="1" max="3" step="0.01" x-model.number="priceG" @input="calculate()" class="w-full accent-red-500" />
+            </div>
+        </div>
+
+        <!-- Colonne droite : Distance et résultat -->
+        <div class="space-y-6">
+            <!-- Distance slider -->
+            <div>
+                <label class="block text-sm font-medium mb-1">Distance/an (km) : <span class="font-semibold" x-text="dist"></span></label>
+                <input type="range" min="5000" max="40000" step="500" x-model.number="dist" @input="calculate()" class="w-full accent-blue-500" />
+            </div>
+            <!-- Résultat -->
+            <div class="bg-gradient-to-r from-green-600 to-blue-600 p-4 rounded-xl">
+                <p class="text-xl font-semibold mb-2" x-text="message"></p>
+                <p x-show="payback !== null" class="text-sm">⏱ Retour sur investissement : <span x-text="payback.toFixed(1)"></span> ans</p>
+                <p class="text-xs mt-2">Entretien inclus : EV <span x-text="maintCostE.toFixed(0)"></span> € / an • Essence <span x-text="maintCostG.toFixed(0)"></span> € / an</p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="bg-gray-800">
+    <div class="container mx-auto px-4 py-6 text-center text-gray-400 text-sm">
+        © 2025 Wattcar. Tous droits réservés.
+    </div>
+</footer>
+
+<!-- Alpine.js Logic -->
+<script>
+    function calculator() {
+        return {
+            presets: {
+                electric: {
+                    'Tesla-Model-3': { name: 'Tesla Model 3', cons: 0.20, price: 45000 },
+                    'BYD-Y': { name: 'BYD Y', cons: 0.14, price: 31990 },
+                    'Dacia-Spring': { name: 'Dacia Spring', cons: 0.12, price: 17990 },
+                    'Fiat-500e': { name: 'Fiat 500e', cons: 0.12, price: 26500 },
+                    'Hyundai-Kona': { name: 'Hyundai Kona EV', cons: 0.15, price: 36000 },
+                    'Kia-eNiro': { name: 'Kia e-Niro', cons: 0.14, price: 37990 },
+                    'Mercedes-EQA': { name: 'Mercedes EQA', cons: 0.17, price: 47000 },
+                    'Nissan-Leaf': { name: 'Nissan Leaf', cons: 0.16, price: 31000 },
+                    'Peugeot-e208': { name: 'Peugeot e-208', cons: 0.16, price: 34500 },
+                    'Renault-ZOE': { name: 'Renault ZOE', cons: 0.15, price: 34990 }
+                },
+                gasoline: {
+                    'Dacia-Sandero': { name: 'Dacia Sandero', cons: 5.8, price: 15000 },
+                    'Fiat-500': { name: 'Fiat 500', cons: 5.6, price: 17000 },
+                    'Ford-Focus': { name: 'Ford Focus', cons: 6.5, price: 22000 },
+                    'Opel-Corsa': { name: 'Opel Corsa', cons: 5.9, price: 20000 },
+                    'Peugeot-208': { name: 'Peugeot 208', cons: 5.4, price: 21000 },
+                    'Renault-Clio': { name: 'Renault Clio', cons: 5.2, price: 19500 },
+                    'Skoda-Octavia': { name: 'Skoda Octavia', cons: 6.8, price: 27000 },
+                    'Toyota-Corolla': { name: 'Toyota Corolla', cons: 6.0, price: 22500 },
+                    'VW-Golf': { name: 'Volkswagen Golf', cons: 6.1, price: 25000 },
+                    'VW-Polo': { name: 'Volkswagen Polo', cons: 5.4, price: 19000 }
+                }
+            },
+            maintE: 0.013,
+            maintG: 0.040,
+            electric: 'Tesla-Model-3',
+            gasoline: 'Dacia-Sandero',
+            consE: 0, consG: 0,
+            priceE: 0.2016,
+            priceG: 1.70,
+            dist: 15000,
+            message: '', payback: null,
+            maintCostE: 0, maintCostG: 0,
+            get electricList() { return this.presets.electric; },
+            get gasolineList() { return this.presets.gasoline; },
+            init() { this.updateModel(); },
+            updateModel() { this.consE = this.presets.electric[this.electric].cons; this.consG = this.presets.gasoline[this.gasoline].cons; this.calculate(); },
+            calculate() {
+                this.maintCostE = this.maintE * this.dist;
+                this.maintCostG = this.maintG * this.dist;
+                const costE = this.consE * this.dist * this.priceE + this.maintCostE;
+                const costG = (this.consG / 100) * this.dist * this.priceG + this.maintCostG;
+                const diff = costG - costE;
+                this.message = diff >= 0 ? `🚗 Économies/an: ${diff.toFixed(2)} €` : `💸 Surcoût/an: ${(-diff).toFixed(2)} €`;
+                const diffPrice = this.presets.electric[this.electric].price - this.presets.gasoline[this.gasoline].price;
+                this.payback = (diff > 0 && diffPrice > 0) ? diffPrice / diff : null;
+            }
+        };
+    }
+</script>
+</body>
+</html>
